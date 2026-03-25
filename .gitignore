@@ -1,0 +1,26 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Node
+node_modules/
+
+# Build outputs
+.next/
+dist/
+coverage/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Prisma
+apps/api/prisma/dev.db*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/

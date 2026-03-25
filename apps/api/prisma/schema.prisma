@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TESTER
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum JobStatus {
+  PENDING
+  COMPLETED
+}
+
+enum TestResult {
+  PASS
+  FAIL
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  DUE_SOON
+  OVERDUE
+}
+
+enum FileAssetKind {
+  PHOTO
+  SIGNATURE
+  PDF
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  role         UserRole
+  isActive     Boolean     @default(true)
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  tester       Tester?
+  auditLogs    AuditLog[]
+  jobsAssigned Job[]       @relation("JobAssignedBy")
+  uploadedFiles FileAsset[] @relation("FileAssetCreatedBy")
+
+  @@index([role])
+}
+
+model Tester {
+  id                      String      @id @default(cuid())
+  userId                  String      @unique
+  name                    String
+  certificationNumber     String      @unique
+  certificationExpiration DateTime
+  isActive                Boolean     @default(true)
+  deletedAt               DateTime?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  jobs        Job[]        @relation("JobTester")
+  testReports TestReport[]
+
+  @@index([certificationExpiration])
+}
+
+model Device {
+  id               String       @id @default(cuid())
+  deviceId         String       @unique
+  serialNumber     String       @unique
+  deviceType       String
+  manufacturer     String
+  model            String
+  installationDate DateTime
+  locationAddress  String
+  city             String
+  state            String
+  zip              String
+  customerName     String
+  customerContact  String?
+  status           DeviceStatus @default(ACTIVE)
+  deletedAt        DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  jobs        Job[]
+  testReports TestReport[]
+  files       FileAsset[]
+
+  @@index([status])
+  @@index([city, state, zip])
+}
+
+model Job {
+  id               String    @id @default(cuid())
+  jobId            String    @unique
+  deviceId         String
+  scheduledDate    DateTime
+  assignedTesterId String
+  assignedById     String?
+  status           JobStatus @default(PENDING)
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  device         Device       @relation(fields: [deviceId], references: [id])
+  assignedTester Tester       @relation("JobTester", fields: [assignedTesterId], references: [id])
+  assignedBy     User?        @relation("JobAssignedBy", fields: [assignedById], references: [id])
+  testReports    TestReport[]
+
+  @@index([assignedTesterId, scheduledDate])
+  @@index([status])
+}
+
+model TestReport {
+  id               String           @id @default(cuid())
+  testId           String           @unique
+  deviceId         String
+  testerId         String
+  jobId            String?
+  testDate         DateTime
+  checkValve1      Decimal          @db.Decimal(6, 2)
+  checkValve2      Decimal          @db.Decimal(6, 2)
+  reliefValve      Decimal          @db.Decimal(6, 2)
+  testResult       TestResult
+  notes            String?
+  signatureFileId  String?          @unique
+  pdfFileId        String?          @unique
+  lastTestDate     DateTime
+  nextDueDate      DateTime
+  complianceStatus ComplianceStatus @default(COMPLIANT)
+  deletedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  device        Device      @relation(fields: [deviceId], references: [id])
+  tester        Tester      @relation(fields: [testerId], references: [id])
+  job           Job?        @relation(fields: [jobId], references: [id])
+  files         FileAsset[] @relation("TestReportFiles")
+  signatureFile FileAsset?  @relation("SignatureFile", fields: [signatureFileId], references: [id])
+  pdfFile       FileAsset?  @relation("PdfFile", fields: [pdfFileId], references: [id])
+
+  @@index([deviceId, testDate])
+  @@index([complianceStatus, nextDueDate])
+}
+
+model FileAsset {
+  id          String        @id @default(cuid())
+  objectKey   String        @unique
+  url         String
+  contentType String
+  sizeBytes   Int
+  kind        FileAssetKind
+  testReportId String?
+  deviceId    String?
+  createdById String?
+  deletedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  testReport         TestReport? @relation("TestReportFiles", fields: [testReportId], references: [id])
+  signatureForReport TestReport? @relation("SignatureFile")
+  pdfForReport       TestReport? @relation("PdfFile")
+  device             Device?     @relation(fields: [deviceId], references: [id])
+  createdBy          User?       @relation("FileAssetCreatedBy", fields: [createdById], references: [id])
+
+  @@index([kind])
+  @@index([testReportId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  actionType String
+  entityType String
+  entityId   String
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([timestamp])
+  @@index([entityType, entityId])
+}

@@ -1,0 +1,33 @@
+{
+  "name": "backflow-compliance-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backflow and plumbing compliance management MVP monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,green \"npm run dev -w @backflow/web\" \"npm run start:dev -w @backflow/api\"",
+    "dev:web": "npm run dev -w @backflow/web",
+    "dev:api": "npm run start:dev -w @backflow/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "infra:up": "(docker compose -f infra/docker/docker-compose.yml up -d || docker-compose -f infra/docker/docker-compose.yml up -d)",
+    "infra:down": "(docker compose -f infra/docker/docker-compose.yml down || docker-compose -f infra/docker/docker-compose.yml down)",
+    "db:generate": "npm run prisma:generate -w @backflow/api",
+    "db:migrate": "npm run prisma:migrate -w @backflow/api",
+    "db:seed": "npm run prisma:seed -w @backflow/api"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
